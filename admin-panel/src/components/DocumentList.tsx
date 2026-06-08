@@ -5,6 +5,22 @@ import { Document, DocumentStatus, api } from '@/lib/api';
 
 const PAGE_SIZE = 10;
 
+/** Compact page list — never render all 50+ buttons for large Confluence syncs. */
+function visiblePages(current: number, total: number): (number | '…')[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i);
+
+  const pages: (number | '…')[] = [0];
+  const window = 2;
+  const start = Math.max(1, current - window);
+  const end = Math.min(total - 2, current + window);
+
+  if (start > 1) pages.push('…');
+  for (let i = start; i <= end; i++) pages.push(i);
+  if (end < total - 2) pages.push('…');
+  pages.push(total - 1);
+  return pages;
+}
+
 interface DocMeta {
   label: string;
   url?: string;
@@ -288,25 +304,33 @@ export default function DocumentList({ namespaceId, documents, onDeleted }: Prop
 
                 {/* Pagination */}
                 {totalPages > 1 && (
-                  <div className="flex items-center justify-between border-t border-gray-100 px-4 py-2 text-xs text-gray-500">
-                    <span>{page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, group.docs.length)} of {group.docs.length}</span>
-                    <div className="flex gap-1">
+                  <div className="flex flex-col gap-2 border-t border-gray-100 px-4 py-2.5 text-xs text-gray-500 sm:flex-row sm:items-center sm:justify-between">
+                    <span className="shrink-0 whitespace-nowrap">
+                      {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, group.docs.length)} of {group.docs.length}
+                    </span>
+                    <div className="flex shrink-0 items-center gap-0.5">
                       <button
                         disabled={page === 0}
                         onClick={() => setPages((p) => ({ ...p, [group.key]: page - 1 }))}
                         className="rounded px-2 py-1 hover:bg-gray-100 disabled:opacity-30"
+                        aria-label="Previous page"
                       >←</button>
-                      {Array.from({ length: totalPages }, (_, i) => (
-                        <button
-                          key={i}
-                          onClick={() => setPages((p) => ({ ...p, [group.key]: i }))}
-                          className={`rounded px-2 py-1 ${i === page ? 'bg-brand-500 text-white' : 'hover:bg-gray-100'}`}
-                        >{i + 1}</button>
-                      ))}
+                      {visiblePages(page, totalPages).map((item, idx) =>
+                        item === '…' ? (
+                          <span key={`ellipsis-${idx}`} className="px-1 text-gray-300 select-none">…</span>
+                        ) : (
+                          <button
+                            key={item}
+                            onClick={() => setPages((p) => ({ ...p, [group.key]: item }))}
+                            className={`min-w-[1.75rem] rounded px-2 py-1 ${item === page ? 'bg-brand-500 text-white' : 'hover:bg-gray-100'}`}
+                          >{item + 1}</button>
+                        ),
+                      )}
                       <button
                         disabled={page === totalPages - 1}
                         onClick={() => setPages((p) => ({ ...p, [group.key]: page + 1 }))}
                         className="rounded px-2 py-1 hover:bg-gray-100 disabled:opacity-30"
+                        aria-label="Next page"
                       >→</button>
                     </div>
                   </div>

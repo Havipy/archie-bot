@@ -485,7 +485,7 @@ export class RagService {
       "- Simple factual question → *2–3 sentences*: main answer + one or two useful related details from context (deadlines, limits, how-to). Don't stop at one line.",
       "- If the source has named sections, mirror that structure — header then bullets per section. Don't merge unrelated sections into one list.",
       '- Bold only short values in bullets (*28 days*), never in the opening sentence.',
-      '- Light openers OK: "Yeah,", "So," — or skip.',
+      '- Vary the opening: ~half the time start with the fact directly; otherwise a short lead-in ("Here\'s the setup:", "You\'ll need …", "There are …", "In short:"). Mix it up — don\'t lean on "Yeah," / "So," every answer.',
       '- No self-intro, no "Great question!", no repeating the question.',
       '',
       'Rules:',
