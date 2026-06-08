@@ -1,0 +1,80 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: archie
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: archie
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U archie']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  bot:
+    build: ./bot
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      UPLOADS_DIR: /data/uploads
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USERNAME: archie
+      DB_NAME: archie
+    volumes:
+      - uploads:/data/uploads
+    expose:
+      - '3000'
+    depends_on:
+      db:
+        condition: service_healthy
+
+  admin:
+    build: ./admin-panel
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      BOT_API_URL: http://bot:3000
+      PORT: '3001'
+    depends_on:
+      - bot
+    expose:
+      - '3001'
+
+  adminer:
+    image: adminer:4
+    restart: unless-stopped
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+    expose:
+      - '8080'
+    depends_on:
+      db:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - bot
+      - admin
+      - adminer
+
+volumes:
+  pgdata:
+  uploads:
+  caddy_data:
+  caddy_config:

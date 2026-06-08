@@ -1,0 +1,36 @@
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	# Bot: Slack + admin API + file downloads
+	handle /slack/* {
+		reverse_proxy bot:3000
+	}
+
+	# Next.js admin routes (must be before /api/* → bot)
+	handle /api/login* {
+		reverse_proxy admin:3001
+	}
+	handle /api/proxy* {
+		reverse_proxy admin:3001
+	}
+	handle /api/* {
+		reverse_proxy bot:3000
+	}
+
+	# Postgres UI (Adminer) — https://<domain>/db
+	handle /db* {
+		uri strip_prefix /db
+		reverse_proxy adminer:8080
+	}
+
+	# Admin UI
+	handle {
+		reverse_proxy admin:3001
+	}
+
+	request_body {
+		max_size 12MB
+	}
+}
