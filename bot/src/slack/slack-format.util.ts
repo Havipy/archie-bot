@@ -190,6 +190,16 @@ export interface AnswerSegment {
 const STANDUP_SECTION_RE =
   /^(completed tasks?|action items?|next up|decisions?|blockers?|risks?|attendees?|agenda|notes?)$/i;
 
+/** Slack mrkdwn has no nested *bold* — LLM often mixes opener + *6 steps* → literal asterisks. */
+function sanitizeSlackMrkdwn(text: string): string {
+  let t = text.replace(/\*\*(.+?)\*\*/g, '*$1*');
+  const stars = t.match(/\*/g)?.length ?? 0;
+  const nested = /\*[^*\n]*\*[^*\n]/.test(t);
+  const unbalanced = stars % 2 !== 0;
+  if (nested || unbalanced) t = t.replace(/\*/g, '');
+  return t;
+}
+
 function normalizeAnswerText(text: string): string {
   return (
     text
@@ -202,6 +212,9 @@ function normalizeAnswerText(text: string): string {
       .replace(/([.!?;])\s*•\s+/g, '$1\n• ')
       .replace(/([^\n])\s+•\s+/g, '$1\n• ')
       .replace(/\n{3,}/g, '\n\n')
+      .split('\n')
+      .map((line) => sanitizeSlackMrkdwn(line))
+      .join('\n')
       .trim()
   );
 }
@@ -229,7 +242,7 @@ function parseSectionHeader(line: string): string | null {
 
 function formatSegment(seg: AnswerSegment): string {
   const parts: string[] = [];
-  if (seg.lead) parts.push(seg.lead);
+  if (seg.lead) parts.push(sanitizeSlackMrkdwn(seg.lead));
   if (seg.section) parts.push(`*${seg.section}*`);
   if (seg.bullets.length)
     parts.push(seg.bullets.map((b) => `• ${b}`).join('\n'));
@@ -307,7 +320,7 @@ function polishBulletLine(text: string): string {
   if (titled && titled[1].length <= 36) {
     return `*${titled[1].trim()}* — ${titled[2].trim()}`;
   }
-  return trimmed;
+  return sanitizeSlackMrkdwn(trimmed);
 }
 
 /** Visible answer text during streaming — drop the trailing FOLLOW_UPS/NO_DATA scaffolding. */
